@@ -62,14 +62,6 @@ openssl req -x509 -newkey rsa:2048 -keyout server.key -out server.crt -days 365 
 uvicorn app.main:app --host 0.0.0.0 --port 8443 --ssl-keyfile server.key --ssl-certfile server.crt
 ```
 
-## 答辩演示建议
-
-1. **admin** 登录 → 展示用户/角色/权限/资产管理全菜单
-2. **member** 登录 → 无删除按钮；用 API 或开发者工具尝试删除 → 403 + 日志
-3. **modeler** 修改模型资产成功；修改数据集资产失败
-4. **auditor** 仅可查看操作日志
-5. **guest** 仅可预览列表，下载返回 403
-
 ## 项目结构
 
 ```
