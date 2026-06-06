@@ -1,0 +1,18 @@
+{
+  "project": "AI实验室安全实验",
+  "environment": "development",
+  "model": {
+    "name": "BERT-Security-Classifier",
+    "max_tokens": 512,
+    "temperature": 0.7
+  },
+  "api": {
+    "base_url": "https://api.example.com/v1",
+    "API_KEY": "demo-not-real-key-12345"
+  },
+  "logging": {
+    "level": "info",
+    "path": "./logs/experiment.log"
+  },
+  "note": "演示用配置，密钥均为假数据"
+}

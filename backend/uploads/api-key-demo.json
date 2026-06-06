@@ -1,0 +1,5 @@
+{
+  "API_KEY": "demo-not-real-key-12345",
+  "ENV": "development",
+  "note": "仅放置演示用假密钥，不包含真实敏感信息"
+}

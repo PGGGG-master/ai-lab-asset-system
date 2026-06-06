@@ -1,0 +1,409 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI实验室资产管理系统</title>
+  <style>
+    body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif; background: #f0f2f5; }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1a237e, #0d47a1, #01579b); }
+    .login-card { width: 480px; background: #fff; border-radius: 8px; padding: 28px; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+    .layout { display: flex; min-height: 100vh; }
+    .aside { width: 220px; background: #001529; color: #fff; flex-shrink: 0; }
+    .aside .logo { padding: 18px; text-align: center; font-weight: 600; font-size: 15px; border-bottom: 1px solid #0d2137; }
+    .aside a { display: block; padding: 12px 20px; color: rgba(255,255,255,.75); text-decoration: none; }
+    .aside a.active, .aside a:hover { background: rgba(24,144,255,.2); color: #fff; }
+    .main-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .header { background: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .content { padding: 20px; flex: 1; }
+    .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-num { font-size: 28px; color: #409eff; font-weight: 700; }
+    pre.preview { background: #f5f5f5; padding: 12px; max-height: 400px; overflow: auto; white-space: pre-wrap; font-size: 13px; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid #eee; padding: 10px 8px; text-align: left; }
+    th { background: #fafafa; font-weight: 600; }
+    .btn { padding: 6px 12px; margin: 0 2px; cursor: pointer; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff; font-size: 13px; }
+    .btn:hover { border-color: #409eff; color: #409eff; }
+    .btn-primary { background: #409eff; color: #fff; border-color: #409eff; }
+    .btn-primary:hover { background: #66b1ff; color: #fff; }
+    .btn-danger { color: #f56c6c; border-color: #fbc4c4; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #ecf5ff; color: #409eff; margin: 2px; }
+    .tag-ok { background: #f0f9eb; color: #67c23a; }
+    .tag-err { background: #fef0f0; color: #f56c6c; }
+    .err-msg { color: #f56c6c; font-size: 13px; margin-top: 8px; }
+    label { display: block; margin-top: 8px; font-size: 14px; color: #333; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; margin-bottom: 12px; border: 1px solid #dcdfe6; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+    h2 { margin: 0 0 8px; font-size: 20px; }
+    h3 { margin: 0 0 12px; font-size: 16px; }
+    .muted { color: #666; font-size: 13px; }
+    .inline { width: auto; display: inline-block; margin-right: 8px; }
+    .loading { text-align: center; padding: 40px; color: #999; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <p class="loading">正在加载...</p>
+</div>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+const { createApp, ref, computed, onMounted } = Vue
+
+const MENUS = [
+  { id: "dashboard", title: "\u9996\u9875", perm: null },
+  { id: "assets", title: "\u8d44\u4ea7\u7ba1\u7406", perm: "asset:read" },
+  { id: "users", title: "\u7528\u6237\u7ba1\u7406", perm: "user:manage" },
+  { id: "roles", title: "\u89d2\u8272\u6743\u9650", perm: "role:manage" },
+  { id: "logs", title: "\u64cd\u4f5c\u65e5\u5fd7", perm: "log:view" },
+]
+
+const ASSET_TYPES = [
+  "\u6a21\u578b\u8d44\u4ea7", "\u6570\u636e\u96c6", "Prompt\u6a21\u677f",
+  "\u5b9e\u9a8c\u62a5\u544a", "\u914d\u7f6e\u6587\u4ef6", "\u8bba\u6587\u8d44\u6599"
+]
+
+const DEMO_ACCOUNTS = [
+  ["admin", "admin123", "\u7cfb\u7edf\u7ba1\u7406\u5458"],
+  ["leader", "leader123", "\u9879\u76ee\u8d1f\u8d23\u4eba"],
+  ["modeler", "modeler123", "\u6a21\u578b\u7ba1\u7406\u5458"],
+  ["dataer", "dataer123", "\u6570\u636e\u7ba1\u7406\u5458"],
+  ["member", "member123", "\u5b9e\u9a8c\u6210\u5458"],
+  ["auditor", "auditor123", "\u5b89\u5168\u5ba1\u8ba1\u5458"],
+  ["guest", "guest123", "\u8bbf\u5ba2"],
+]
+
+const api = {
+  async req(method, url, body, isForm) {
+    const opts = { method, headers: {} }
+    const token = localStorage.getItem("token")
+    if (token) opts.headers["Authorization"] = "Bearer " + token
+    if (body) {
+      if (isForm) opts.body = body
+      else {
+        opts.headers["Content-Type"] = "application/json"
+        opts.body = JSON.stringify(body)
+      }
+    }
+    const res = await fetch("/api" + url, opts)
+    const text = await res.text()
+    let data = null
+    try { data = text ? JSON.parse(text) : null } catch { data = { detail: text } }
+    if (!res.ok) {
+      const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data)
+      throw new Error(msg || res.statusText)
+    }
+    return data
+  },
+  get: (u) => api.req("GET", u),
+  post: (u, b) => api.req("POST", u, b),
+  put: (u, b) => api.req("PUT", u, b),
+  del: (u) => api.req("DELETE", u),
+  upload: (u, fd) => api.req("POST", u, fd, true),
+}
+
+createApp({
+  setup() {
+    const page = ref(localStorage.getItem("token") ? "dashboard" : "login")
+    const user = ref(JSON.parse(localStorage.getItem("user") || "null"))
+    const err = ref("")
+    const loading = ref(false)
+    const loginForm = ref({ username: "admin", password: "admin123" })
+    const stats = ref(null)
+    const assets = ref([])
+    const logs = ref([])
+    const users = ref([])
+    const roles = ref([])
+    const permissions = ref([])
+    const selectedRole = ref(null)
+    const rolePermIds = ref([])
+    const previewText = ref("")
+    const previewTitle = ref("")
+    const showPreview = ref(false)
+
+    const visibleMenus = computed(() =>
+      MENUS.filter((m) => !m.perm || (user.value?.permissions || []).includes(m.perm))
+    )
+
+    function hasPerm(p) {
+      return (user.value?.permissions || []).includes(p)
+    }
+
+    function fmtTime(t) {
+      return t ? new Date(t).toLocaleString("zh-CN") : ""
+    }
+
+    async function login() {
+      err.value = ""
+      loading.value = true
+      try {
+        const data = await api.post("/auth/login", loginForm.value)
+        localStorage.setItem("token", data.access_token)
+        localStorage.setItem("user", JSON.stringify(data.user))
+        user.value = data.user
+        page.value = "dashboard"
+        await loadPage()
+      } catch (e) {
+        err.value = e.message
+      } finally {
+        loading.value = false
+      }
+    }
+
+    function logout() {
+      localStorage.clear()
+      user.value = null
+      page.value = "login"
+    }
+
+    function go(p) {
+      page.value = p
+      loadPage()
+    }
+
+    async function loadPage() {
+      try {
+        if (page.value === "dashboard") {
+          stats.value = await api.get("/auth/dashboard")
+        }
+        if (page.value === "assets") {
+          assets.value = await api.get("/assets")
+        }
+        if (page.value === "logs") {
+          logs.value = await api.get("/logs")
+        }
+        if (page.value === "users") {
+          users.value = await api.get("/users")
+          roles.value = await api.get("/roles")
+        }
+        if (page.value === "roles") {
+          roles.value = await api.get("/roles")
+          permissions.value = await api.get("/permissions")
+        }
+      } catch (e) {
+        err.value = e.message
+      }
+    }
+
+    async function previewAsset(row) {
+      const d = await api.get("/assets/" + row.id + "/preview")
+      previewTitle.value = d.name
+      previewText.value = d.content
+      showPreview.value = true
+    }
+
+    async function downloadAsset(row) {
+      const token = localStorage.getItem("token")
+      const res = await fetch("/api/assets/" + row.id + "/download", {
+        headers: { Authorization: "Bearer " + token },
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const blob = await res.blob()
+      const a = document.createElement("a")
+      a.href = URL.createObjectURL(blob)
+      a.download = row.name + ".txt"
+      a.click()
+      URL.revokeObjectURL(a.href)
+    }
+
+    async function deleteAsset(row) {
+      if (!confirm("\u786e\u5b9a\u5220\u9664\u300c" + row.name + "\u300d\uff1f")) return
+      await api.del("/assets/" + row.id)
+      await loadPage()
+      alert("\u5220\u9664\u6210\u529f")
+    }
+
+    async function uploadAsset() {
+      const name = document.getElementById("up-name").value.trim()
+      const type = document.getElementById("up-type").value
+      const desc = document.getElementById("up-desc").value
+      const file = document.getElementById("up-file").files[0]
+      if (!name) { alert("\u8bf7\u8f93\u5165\u8d44\u4ea7\u540d\u79f0"); return }
+      if (!file) { alert("\u8bf7\u9009\u62e9 .txt \u6587\u4ef6"); return }
+      const fd = new FormData()
+      fd.append("name", name)
+      fd.append("asset_type", type)
+      fd.append("description", desc)
+      fd.append("file", file)
+      await api.upload("/assets/upload", fd)
+      document.getElementById("up-file").value = ""
+      await loadPage()
+      alert("\u4e0a\u4f20\u6210\u529f")
+    }
+
+    function selectRole(r) {
+      selectedRole.value = r
+      rolePermIds.value = permissions.value
+        .filter((p) => r.permissions.includes(p.permission_code))
+        .map((p) => p.id)
+    }
+
+    async function saveRolePerms() {
+      await api.put("/roles/" + selectedRole.value.id + "/permissions", {
+        permission_ids: rolePermIds.value,
+      })
+      roles.value = await api.get("/roles")
+      alert("\u6743\u9650\u5df2\u4fdd\u5b58")
+    }
+
+    onMounted(() => {
+      if (user.value) loadPage()
+    })
+
+    return {
+      page, user, err, loading, loginForm, stats, assets, logs, users, roles,
+      permissions, selectedRole, rolePermIds, previewText, previewTitle,
+      showPreview, assetTypes: ASSET_TYPES, visibleMenus, demoAccounts: DEMO_ACCOUNTS,
+      login, logout, go, hasPerm, loadPage, previewAsset, downloadAsset,
+      deleteAsset, uploadAsset, selectRole, saveRolePerms, fmtTime,
+    }
+  },
+  template: `
+  <div v-if="page==='login'" class="login-wrap">
+    <div class="login-card">
+      <h2>AI\u5b9e\u9a8c\u5ba4\u8d44\u4ea7\u7ba1\u7406\u7cfb\u7edf</h2>
+      <p class="muted">\u57fa\u4e8e RBAC \u00b7 \u8f6f\u4ef6\u5b89\u5168\u5b9e\u9a8c</p>
+      <label>\u7528\u6237\u540d</label>
+      <input v-model="loginForm.username" placeholder="admin" />
+      <label>\u5bc6\u7801</label>
+      <input v-model="loginForm.password" type="password" placeholder="admin123" @keyup.enter="login" />
+      <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:8px" :disabled="loading" @click="login">
+        {{ loading ? '\u767b\u5f55\u4e2d...' : '\u767b\u5f55' }}
+      </button>
+      <p v-if="err" class="err-msg">{{ err }}</p>
+      <p class="muted" style="margin-top:20px">\u6f14\u793a\u8d26\u53f7\uff08\u70b9\u51fb\u884c\u5feb\u901f\u586b\u5165\uff09\uff1a</p>
+      <table>
+        <tr><th>\u8d26\u53f7</th><th>\u5bc6\u7801</th><th>\u89d2\u8272</th></tr>
+        <tr v-for="d in demoAccounts" :key="d[0]" style="cursor:pointer"
+            @click="loginForm.username=d[0];loginForm.password=d[1]">
+          <td>{{ d[0] }}</td><td>{{ d[1] }}</td><td>{{ d[2] }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <div v-else class="layout">
+    <aside class="aside">
+      <div class="logo">AI\u5b9e\u9a8c\u5ba4\u8d44\u4ea7</div>
+      <a v-for="m in visibleMenus" :key="m.id" href="#"
+         :class="{active: page===m.id}" @click.prevent="go(m.id)">{{ m.title }}</a>
+    </aside>
+    <div class="main-wrap">
+      <header class="header">
+        <b>{{ visibleMenus.find(m=>m.id===page)?.title || '\u7cfb\u7edf' }}</b>
+        <span>
+          <span v-for="r in user.roles" :key="r" class="tag">{{ r }}</span>
+          <span style="margin:0 8px">{{ user.username }}</span>
+          <button class="btn btn-danger" @click="logout">\u9000\u51fa</button>
+        </span>
+      </header>
+      <main class="content">
+        <div v-if="page==='dashboard'">
+          <div class="stats">
+            <div class="card"><div class="stat-num">{{ stats?.user_count ?? '-' }}</div>\u7528\u6237</div>
+            <div class="card"><div class="stat-num">{{ stats?.asset_count ?? '-' }}</div>\u8d44\u4ea7</div>
+            <div class="card"><div class="stat-num">{{ stats?.role_count ?? '-' }}</div>\u89d2\u8272</div>
+            <div class="card"><div class="stat-num">{{ stats?.log_count ?? '-' }}</div>\u65e5\u5fd7</div>
+          </div>
+          <div class="card">
+            <h3>\u5f53\u524d\u6743\u9650</h3>
+            <span v-for="p in user.permissions" :key="p" class="tag">{{ p }}</span>
+          </div>
+          <div class="card">
+            <h3>\u6700\u8fd1\u64cd\u4f5c\u65e5\u5fd7</h3>
+            <table>
+              <tr><th>\u65f6\u95f4</th><th>\u7528\u6237</th><th>\u64cd\u4f5c</th><th>\u7ed3\u679c</th><th>\u8be6\u60c5</th></tr>
+              <tr v-for="l in (stats?.recent_logs||[])" :key="l.id">
+                <td>{{ fmtTime(l.created_at) }}</td>
+                <td>{{ l.username }}</td>
+                <td>{{ l.action }}</td>
+                <td><span :class="['tag', l.result==='\u6210\u529f'?'tag-ok':'tag-err']">{{ l.result }}</span></td>
+                <td>{{ l.detail }}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div v-if="page==='assets'" class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3>\u8d44\u4ea7\u5217\u8868</h3>
+            <div v-if="hasPerm('asset:upload')">
+              <input id="up-name" class="inline" placeholder="\u540d\u79f0" style="width:140px" />
+              <select id="up-type" class="inline" style="width:120px">
+                <option v-for="t in assetTypes" :key="t" :value="t">{{ t }}</option>
+              </select>
+              <input id="up-desc" class="inline" placeholder="\u63cf\u8ff0\uff08\u53ef\u9009\uff09" style="width:120px" />
+              <input id="up-file" class="inline" type="file" accept=".txt" style="width:auto" />
+              <button class="btn btn-primary" @click="uploadAsset">\u4e0a\u4f20</button>
+            </div>
+          </div>
+          <table>
+            <tr><th>\u540d\u79f0</th><th>\u7c7b\u578b</th><th>\u4e0a\u4f20\u8005</th><th>\u64cd\u4f5c</th></tr>
+            <tr v-for="a in assets" :key="a.id">
+              <td>{{ a.name }}</td>
+              <td><span class="tag">{{ a.asset_type }}</span></td>
+              <td>{{ a.owner_name || '-' }}</td>
+              <td>
+                <button class="btn" @click="previewAsset(a)">\u9884\u89c8</button>
+                <button v-if="hasPerm('asset:download')" class="btn" @click="downloadAsset(a)">\u4e0b\u8f7d</button>
+                <button v-if="hasPerm('asset:delete')" class="btn btn-danger" @click="deleteAsset(a)">\u5220\u9664</button>
+              </td>
+            </tr>
+          </table>
+          <div v-if="showPreview" class="card" style="margin-top:12px">
+            <h3>{{ previewTitle }}</h3>
+            <pre class="preview">{{ previewText }}</pre>
+            <button class="btn" @click="showPreview=false">\u5173\u95ed</button>
+          </div>
+        </div>
+        <div v-if="page==='logs'" class="card">
+          <h3>\u64cd\u4f5c\u65e5\u5fd7\uff08\u542b\u8d8a\u6743\u8bb0\u5f55\uff09</h3>
+          <table>
+            <tr><th>\u65f6\u95f4</th><th>\u7528\u6237</th><th>\u64cd\u4f5c</th><th>\u7ed3\u679c</th><th>\u8be6\u60c5</th><th>IP</th></tr>
+            <tr v-for="l in logs" :key="l.id">
+              <td>{{ fmtTime(l.created_at) }}</td>
+              <td>{{ l.username || '-' }}</td>
+              <td>{{ l.action }}</td>
+              <td><span :class="['tag', l.result==='\u6210\u529f'?'tag-ok':'tag-err']">{{ l.result }}</span></td>
+              <td>{{ l.detail }}</td>
+              <td>{{ l.ip }}</td>
+            </tr>
+          </table>
+        </div>
+        <div v-if="page==='users'" class="card">
+          <h3>\u7528\u6237\u7ba1\u7406</h3>
+          <table>
+            <tr><th>ID</th><th>\u7528\u6237\u540d</th><th>\u72b6\u6001</th><th>\u89d2\u8272</th></tr>
+            <tr v-for="u in users" :key="u.id">
+              <td>{{ u.id }}</td>
+              <td>{{ u.username }}</td>
+              <td>{{ u.status === 'active' ? '\u6b63\u5e38' : '\u7981\u7528' }}</td>
+              <td><span v-for="r in u.roles" :key="r" class="tag">{{ r }}</span></td>
+            </tr>
+          </table>
+        </div>
+        <div v-if="page==='roles'" style="display:flex;gap:16px">
+          <div class="card" style="flex:1">
+            <h3>\u89d2\u8272\u5217\u8868</h3>
+            <table>
+              <tr v-for="r in roles" :key="r.id" style="cursor:pointer" @click="selectRole(r)">
+                <td>{{ r.role_name }}</td>
+                <td>{{ r.permissions.length }} \u9879\u6743\u9650</td>
+              </tr>
+            </table>
+          </div>
+          <div class="card" style="flex:1" v-if="selectedRole">
+            <h3>{{ selectedRole.role_name }} - \u6743\u9650\u914d\u7f6e</h3>
+            <label v-for="p in permissions" :key="p.id" style="display:block;margin:8px 0">
+              <input type="checkbox" :value="p.id" v-model="rolePermIds" />
+              {{ p.permission_name }} ({{ p.permission_code }})
+            </label>
+            <button class="btn btn-primary" style="margin-top:12px" @click="saveRolePerms">\u4fdd\u5b58\u6743\u9650</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  `
+}).mount("#app")
+</script>
+</body>
+</html>

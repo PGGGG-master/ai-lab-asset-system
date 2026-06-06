@@ -1,0 +1,195 @@
+:root {
+  --app-bg: #f0f4f8;
+  --app-bg-pattern: radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
+  --sidebar-bg: #0f172a;
+  --sidebar-active: #3b82f6;
+  --card-radius: 14px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --el-color-primary: #3b82f6;
+  --el-color-primary-light-3: #79b3f7;
+  --el-color-primary-light-5: #9dc9f9;
+  --el-color-primary-light-7: #c2dff9;
+  --el-color-primary-light-9: #e8f2fe;
+  --el-color-primary-dark-2: #2563eb;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--app-bg);
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 页面切换 — 仅用 opacity，避免 transform 导致 fixed 弹层被裁剪 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.22s ease;
+}
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+}
+
+/* 主内容区背景 */
+.main-content {
+  background: var(--app-bg-pattern);
+  min-height: calc(100vh - 60px);
+}
+
+/* 内容区卡片 */
+.main-content .el-card {
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), border-color var(--transition);
+  overflow: visible;
+}
+.main-content .el-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: rgba(203, 213, 225, 0.9);
+}
+.main-content .el-card__header {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 20px;
+  background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+  font-weight: 600;
+  color: #334155;
+}
+
+/* 表格 */
+.main-content .el-table {
+  --el-table-header-bg-color: #f8fafc;
+  --el-table-row-hover-bg-color: #f0f7ff;
+  border-radius: 8px;
+}
+.main-content .el-table th.el-table__cell {
+  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+}
+.main-content .el-table .el-table__row {
+  transition: background 0.15s ease;
+}
+
+/* 对话框 */
+.el-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+.el-dialog {
+  border-radius: 16px !important;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  margin-top: 8vh !important;
+}
+
+.el-dialog__body {
+  padding-top: 8px !important;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.el-dialog__footer {
+  padding: 12px 20px 18px !important;
+}
+
+.el-dialog__header {
+  padding: 18px 20px 12px !important;
+  margin-right: 0 !important;
+  flex-shrink: 0;
+}
+
+.el-dialog__title {
+  font-weight: 600 !important;
+  color: #0f172a !important;
+}
+
+/* 按钮微动效 */
+.el-button {
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+.el-button--primary:not(.is-disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* 标签 */
+.el-tag {
+  border-radius: 6px;
+}
+
+/* 空状态 */
+.el-empty {
+  padding: 32px 0;
+}
+
+/* 入场动画 — 不用 transform，防止弹窗遮罩被父级裁剪 */
+@keyframes fadeInUp {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-in {
+  animation: fadeInUp 0.4s ease both;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* 预览代码块 */
+.preview-code {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 16px;
+  border-radius: 10px;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* 筛选栏 */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #eef2f6;
+}
+
+/* 权限列表滚动区 */
+.perm-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.perm-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.perm-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}

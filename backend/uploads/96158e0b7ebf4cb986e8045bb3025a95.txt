@@ -1,0 +1,50 @@
+========================================
+资产名称：BERT-Security-Classifier 模型参数说明
+资产类型：模型资产
+========================================
+
+【基本信息】
+模型名称：BERT-Security-Classifier
+版本号：v1.0
+任务类型：文本二分类（安全 / 非安全）
+基础架构：BERT-base（12 层，768 隐藏维度，12 注意力头）
+参数量：约 110M
+
+【训练配置】
+预训练权重：bert-base-uncased
+最大序列长度：512
+Batch Size：32
+学习率：2e-5
+训练轮数：5 epochs
+优化器：AdamW
+损失函数：CrossEntropyLoss
+
+【数据集】
+训练集：security-train.csv（8000 条）
+验证集：security-dev.csv（1000 条）
+测试集：security-test.csv（1000 条）
+标签：0=正常文本，1=恶意/攻击文本
+
+【模型结构（摘要）】
+- Embedding 层：vocab_size=30522, hidden_size=768
+- Transformer Encoder × 12
+- Pooler 层 + 全连接分类头（num_labels=2）
+
+【推理参数】
+temperature：1.0（分类模型通常不使用采样）
+confidence_threshold：0.85
+device：cuda / cpu
+
+【文件说明（真实部署时）】
+权重文件：bert-security-classifier-v1.0.pt
+配置文件：model_config.json
+词表文件：vocab.txt
+
+【用途说明】
+用于 AI 实验室安全实验中的恶意文本检测演示。
+本 .txt 为模型元数据与参数说明，用于 RBAC 资产管理演示。
+
+【维护信息】
+负责人：模型管理员（modeler）
+更新日期：2026-03-01
+备注：课程演示数据，非真实训练权重
